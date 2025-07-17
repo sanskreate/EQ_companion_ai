@@ -1,8 +1,8 @@
 // Main React App entry point
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './App.css';
 
-const personas = [
+const defaultPersonas = [
   {
     name: 'Aarav',
     file: 'persona-configs/aarav.json',
@@ -24,15 +24,29 @@ const personas = [
 ];
 
 function App() {
+  const [personas, setPersonas] = useState(defaultPersonas);
+  // Load all persona JSON files from backend on mount
+  useEffect(() => {
+    const fetchPersonas = async () => {
+      try {
+        const res = await fetch('http://localhost:8000/persona_list/');
+        if (res.ok) {
+          const data = await res.json();
+          setPersonas(data);
+        }
+      } catch (e) {}
+    };
+    fetchPersonas();
+  }, []);
   const [userInput, setUserInput] = useState('');
   // Store chat history for each persona by name
   const [personaChats, setPersonaChats] = useState(() => {
     const obj = {};
-    personas.forEach(p => { obj[p.name] = []; });
+    defaultPersonas.forEach(p => { obj[p.name] = []; });
     return obj;
   });
   const [messages, setMessages] = useState([]);
-  const [persona, setPersona] = useState(personas[0]);
+  const [persona, setPersona] = useState(defaultPersonas[0]);
   const [theme, setTheme] = useState('light');
   const [showProfile, setShowProfile] = useState(false);
   const [profile, setProfile] = useState({
@@ -43,6 +57,16 @@ function App() {
     personality: '',
   });
   const [editProfile, setEditProfile] = useState(false);
+  const [showPersonaModal, setShowPersonaModal] = useState(false);
+  const [newPersona, setNewPersona] = useState({
+    name: '',
+    type: '',
+    traits: '',
+    tone: '',
+    attachment_style: '',
+    love_language: '',
+  });
+  const [personaError, setPersonaError] = useState('');
 
   const handleSend = async () => {
     if (!userInput.trim()) return;
@@ -75,6 +99,53 @@ function App() {
     setMessages(personaChats[p.name] || []);
   };
 
+  // Handle custom persona creation
+  // Random avatar generator (emoji pool)
+  const randomAvatar = () => {
+    const emojis = ['🧑🏻', '🧑🏼', '🧑🏽', '🧑🏾', '🧑🏿', '👩🏻', '👩🏼', '👩🏽', '👩🏾', '👩🏿', '👨🏻', '👨🏼', '👨🏽', '👨🏾', '👨🏿', '🧔', '👱', '🧑‍🎤', '🧑‍💻', '🧑‍🚀', '🧑‍🔬', '🧑‍🏫', '🧑‍🍳', '🧑‍🎨', '🧑‍🚒', '🧑‍✈️', '🧑‍⚕️', '🧑‍🌾', '🧑‍🔧', '🧑‍🏭', '🧑‍💼', '🧑‍🔬'];
+    return emojis[Math.floor(Math.random() * emojis.length)];
+  };
+
+  const handleCreatePersona = async (e) => {
+    e.preventDefault();
+    setPersonaError('');
+    if (!newPersona.name || !newPersona.type || !newPersona.traits || !newPersona.tone || !newPersona.attachment_style || !newPersona.love_language) {
+      setPersonaError('All fields are required.');
+      return;
+    }
+    // Prepare persona object for backend
+    const personaObj = {
+      name: newPersona.name,
+      type: newPersona.type,
+      traits: newPersona.traits.split(',').map(t => t.trim()).filter(Boolean),
+      tone: newPersona.tone,
+      attachment_style: newPersona.attachment_style,
+      love_language: newPersona.love_language,
+    };
+    try {
+      const res = await fetch('http://localhost:8000/create_persona/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(personaObj),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        setPersonaError(err.detail || 'Failed to create persona.');
+        return;
+      }
+      // Add to local personas list
+      const personaFile = `persona-configs/${newPersona.name.toLowerCase()}.json`;
+      const newP = { ...personaObj, file: personaFile, avatar: randomAvatar(), desc: (personaObj.traits || []).join(', ') };
+      setPersonas(ps => [...ps, newP]);
+      setPersona(newP);
+      setMessages([]);
+      setShowPersonaModal(false);
+      setNewPersona({ name: '', type: '', traits: '', tone: '', attachment_style: '', love_language: '' });
+    } catch (err) {
+      setPersonaError('Failed to create persona.');
+    }
+  };
+
   return (
     <div className={`app-container ${theme}`}>
       <header className="header">
@@ -83,15 +154,57 @@ function App() {
             className="persona-dropdown"
             value={persona.name}
             onChange={e => {
+              if (e.target.value === '__custom__') {
+                setShowPersonaModal(true);
+                return;
+              }
               const p = personas.find(p => p.name === e.target.value);
               if (p) handlePersonaChange(p);
             }}
-            style={{fontSize: '1.1rem', borderRadius: '10px', padding: '0.5em 1.2em', border: '1.5px solid var(--border)', background: 'var(--button-bg)', color: 'var(--button-fg)', fontWeight: 500}}
+            style={{
+              fontSize: '1.1rem',
+              borderRadius: '10px',
+              padding: '0.5em 1.2em',
+              border: '1.5px solid var(--border)',
+              background: 'var(--button-bg)',
+              color: 'var(--button-fg)',
+              fontWeight: 500,
+              maxHeight: '160px',
+              overflowY: 'auto',
+              display: 'block',
+            }}
+            size={Math.min(8, personas.length + 1)}
           >
             {personas.map(p => (
               <option key={p.name} value={p.name}>{p.avatar} {p.name}</option>
             ))}
+            <option value="__custom__">➕ Create a custom person...</option>
           </select>
+      {/* Custom Persona Modal */}
+      {showPersonaModal && (
+        <div className="profile-modal">
+          <div className="profile-content">
+            <h3>Create a Custom Persona</h3>
+            <form onSubmit={handleCreatePersona} style={{display: 'flex', flexDirection: 'column', gap: 8}}>
+              <label>Name*</label>
+              <input value={newPersona.name} onChange={e => setNewPersona(p => ({...p, name: e.target.value}))} required />
+              <label>Type*</label>
+              <input value={newPersona.type} onChange={e => setNewPersona(p => ({...p, type: e.target.value}))} required placeholder="e.g. Crush, Friend, Mentor" />
+              <label>Traits* (comma separated)</label>
+              <input value={newPersona.traits} onChange={e => setNewPersona(p => ({...p, traits: e.target.value}))} required placeholder="e.g. Witty, Supportive, Ambitious" />
+              <label>Tone*</label>
+              <input value={newPersona.tone} onChange={e => setNewPersona(p => ({...p, tone: e.target.value}))} required placeholder="e.g. Warm and teasing" />
+              <label>Attachment Style*</label>
+              <input value={newPersona.attachment_style} onChange={e => setNewPersona(p => ({...p, attachment_style: e.target.value}))} required placeholder="e.g. Secure" />
+              <label>Love Language*</label>
+              <input value={newPersona.love_language} onChange={e => setNewPersona(p => ({...p, love_language: e.target.value}))} required placeholder="e.g. Words of Affirmation" />
+              {personaError && <div style={{color: 'red'}}>{personaError}</div>}
+              <button type="submit" style={{marginTop: 8}}>Create Persona</button>
+              <button type="button" onClick={() => { setShowPersonaModal(false); setPersonaError(''); }} style={{background: 'var(--muted)', color: '#fff'}}>Cancel</button>
+            </form>
+          </div>
+        </div>
+      )}
           <div className="persona-brief" style={{fontSize: '1.1rem', color: 'var(--muted)'}}>
             <span style={{fontWeight: 600, color: 'var(--accent)', marginRight: 6}}>{persona.avatar} {persona.name}:</span>
             <span>{persona.desc}</span>
