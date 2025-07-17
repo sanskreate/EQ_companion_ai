@@ -1,12 +1,11 @@
-from groq import Groq
+
 import os
-import pathlib
 from dotenv import load_dotenv
 
-# Load .env from the new location: project_root/key/.env
-env_path = pathlib.Path(__file__).parent.parent.parent / 'key' / '.env'
-load_dotenv(dotenv_path=env_path)
+# Adjust the path to your .env file as needed
+load_dotenv(dotenv_path="C:/Users/sansk/PROJECTS/EQ_AGENT/key/.env")
 
+from groq import Groq
 groq_api_key = os.getenv("GROQ_API_KEY")
 
 def extract_personality_from_chat(clean_text: str):

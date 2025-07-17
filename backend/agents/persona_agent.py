@@ -7,9 +7,10 @@ import json
 from dotenv import load_dotenv
 import pathlib
 
-# Load .env from the new location: project_root/key/.env
-env_path = pathlib.Path(__file__).parent.parent.parent / 'key' / '.env'
-load_dotenv(dotenv_path=env_path)
+# Load .env from the parent directory's 'key' folder
+
+# Adjust the path to your .env file as needed
+load_dotenv(dotenv_path="C:/Users/sansk/PROJECTS/EQ_AGENT/key/.env")
 
 def load_persona(persona_file: str):
     with open(persona_file, "r") as f:

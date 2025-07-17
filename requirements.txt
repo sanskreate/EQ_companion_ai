@@ -8,3 +8,4 @@ openai
 langchain_community
 python-multipart
 groq
+dotenv
