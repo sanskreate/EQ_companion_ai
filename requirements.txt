@@ -9,3 +9,6 @@ langchain_community
 python-multipart
 groq
 dotenv
+passlib[bcrypt]
+python-jose
+pydantic[email]

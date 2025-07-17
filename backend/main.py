@@ -1,3 +1,4 @@
+from backend import users
 # FastAPI backend entry point
 
 from fastapi import FastAPI, UploadFile, Form, HTTPException
@@ -9,7 +10,9 @@ from fastapi.middleware.cors import CORSMiddleware
 import os
 import json
 
+
 app = FastAPI()
+app.include_router(users.router)
 
 app.add_middleware(
     CORSMiddleware,
