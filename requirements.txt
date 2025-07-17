@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+langchain
+gunicorn
+chromadb
+jinja2
+openai
+langchain_community
+python-multipart
+groq
