@@ -1,6 +1,6 @@
 // Chat page component
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 const defaultPersonas = [
   {
@@ -20,6 +20,12 @@ const defaultPersonas = [
     file: 'persona-configs/leo.json',
     avatar: '🧑🏼',
     desc: 'Adventurous, Bold, Loyal',
+  },
+  {
+    name: 'Krish',
+    file: 'persona-configs/krish.json',
+    avatar: '🧑',
+    desc: 'Focused, Goal-Oriented, Means-Business',
   },
 ];
 
@@ -53,6 +59,43 @@ export default function Chat({ isAuthenticated, onRequireAuth }) {
     love_language: '',
   });
   const [personaError, setPersonaError] = useState('');
+
+  useEffect(() => {
+    async function loadConfigPersonas() {
+      try {
+        const personaFiles = [
+          'persona-configs/aarav.json',
+          'persona-configs/rhea.json',
+          'persona-configs/leo.json',
+          'persona-configs/krish.json',
+        ];
+        const loaded = await Promise.all(personaFiles.map(async (file) => {
+          try {
+            const res = await fetch(`/${file}`);
+            if (!res.ok) return null;
+            const data = await res.json();
+            return {
+              name: data.name,
+              file,
+              avatar: '🧑', // Default avatar, you can customize per persona
+              desc: (data.traits || []).join(', '),
+              ...data,
+            };
+          } catch {
+            return null;
+          }
+        }));
+        const filtered = loaded.filter(Boolean);
+        // Merge with defaultPersonas, avoiding duplicates
+        setPersonas(prev => {
+          const names = new Set(prev.map(p => p.name));
+          const merged = [...prev, ...filtered.filter(p => !names.has(p.name))];
+          return merged;
+        });
+      } catch {}
+    }
+    loadConfigPersonas();
+  }, []);
 
   const handleSend = async () => {
     if (!userInput.trim()) return;
@@ -123,11 +166,11 @@ export default function Chat({ isAuthenticated, onRequireAuth }) {
         setPersonaError(err.detail || 'Failed to create persona.');
         return;
       }
-      // Add to local personas list
+      // Add to local personas list and set as selected
       const personaFile = `persona-configs/${newPersona.name.toLowerCase()}.json`;
       const newP = { ...personaObj, file: personaFile, avatar: randomAvatar(), desc: (personaObj.traits || []).join(', ') };
       setPersonas(ps => [...ps, newP]);
-      setPersona(newP);
+      setPersona(newP); // Set the new persona as selected
       setMessages([]);
       setShowPersonaModal(false);
       setNewPersona({ name: '', type: '', traits: '', tone: '', attachment_style: '', love_language: '' });
